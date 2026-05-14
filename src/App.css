@@ -55,7 +55,7 @@ body {
 
 .header {
   text-align: center;
-  padding: 16px 0 14px;
+  padding: 0; /* header-inner に委譲 */
   background: linear-gradient(135deg, #2a1a3e 0%, #3d2060 100%);
   position: relative;
   overflow: hidden;
@@ -222,12 +222,13 @@ body {
 .modal-content {
   background-color: var(--surface);
   width: 100%;
-  padding: 0 0 12px;
+  padding: 0;
   border-radius: 24px 24px 0 0;
   min-height: 45vh;
   box-shadow: 0 -6px 24px rgba(50, 10, 80, 0.18);
   animation: slideUp 0.3s ease-out;
-  overflow: hidden;
+  /* Fix 4: flex構造でスクロール制御するため overflow は子に委譲 */
+  overflow: visible;
 }
 .modal-content::before {
   content: '';
@@ -242,13 +243,10 @@ body {
     var(--imas-shiny) 66.4% 83%,
     var(--imas-gaku)  83%   100%
   );
+  border-radius: 24px 24px 0 0;
+  flex-shrink: 0;
 }
-.modal-content h2 {
-  font-size: 18px;
-  font-weight: 800;
-  color: var(--text);
-  padding: 16px 20px 0;
-}
+
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to   { transform: translateY(0); }
@@ -425,4 +423,77 @@ body {
 .add-btn:active {
   transform: scale(0.97);
   box-shadow: 0 1px 6px rgba(141,187,255,0.3);
+}
+
+/* =============================================
+   Fix 3: バッジ +N件 表示
+============================================= */
+.event-badge-overflow {
+  font-size: 9px;
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--text-muted);
+  background: var(--border);
+  font-weight: 700;
+  width: 100%;
+  text-align: left;
+}
+
+/* =============================================
+   Fix 4: モーダルをスクロール可能な構造に
+============================================= */
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  max-height: 88vh; /* 画面の88%以内に収める */
+}
+
+.modal-header {
+  flex-shrink: 0; /* 縮まない */
+  padding: 16px 20px 0;
+}
+.modal-header h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  padding: 0;
+}
+
+/* modal-body がスクロール領域になる */
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  margin: 0;
+  padding: 12px 16px 0;
+  color: #666;
+  line-height: 1.5;
+  /* スクロールバーを細く */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.modal-footer {
+  flex-shrink: 0;
+  padding: 12px 16px;
+}
+
+/* =============================================
+   Fix 2: 追加ボタン disabled スタイル
+============================================= */
+.add-btn.disabled {
+  background: var(--border);
+  color: var(--text-muted);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* =============================================
+   Fix 6: ヘッダー構造修正
+============================================= */
+.header {
+  padding: 0; /* header-inner に移譲 */
+}
+.header-inner {
+  text-align: center;
+  padding: 16px 0 14px;
 }

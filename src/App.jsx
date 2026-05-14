@@ -1,34 +1,31 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './App.css';
-import { db } from './firebase'; 
+import { db } from './firebase';
 import { collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-// LINEのライブラリをインポート
 import liff from '@line/liff';
 
 function App() {
-  // LINEから取得するユーザー情報のステート
   const [currentUser, setCurrentUser] = useState(null);
-  
   const [selectedDate, setSelectedDate] = useState(null);
   const [events, setEvents] = useState({});
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventType, setNewEventType] = useState('event');
 
-  const eventsCollectionRef = collection(db, 'events');
+  // ✅ Fix 5: eventsCollectionRef を useRef で安定化（毎レンダー再生成を防ぐ）
+  const eventsCollectionRef = useRef(collection(db, 'events')).current;
 
   // --------------------------------------------------
   // 1. LIFFの初期化（LINEログイン）
   // --------------------------------------------------
   useEffect(() => {
-    liff.init({ liffId: "2010083936-tdIXgoSL" }) // ★ここにIDを貼り付け！
+    liff.init({ liffId: "2010083936-tdIXgoSL" })
       .then(() => {
         if (!liff.isLoggedIn()) {
-          liff.login(); // ログインしていなければログイン画面へ
+          liff.login();
         } else {
           liff.getProfile().then(profile => {
-            // LINEの名前をセット
             setCurrentUser(profile.displayName);
           });
         }
@@ -38,21 +35,21 @@ function App() {
       });
   }, []);
 
-  // 予定の読み込み（変更なし）
+  // 予定の読み込み
   useEffect(() => {
     const q = query(eventsCollectionRef);
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const fetchedEvents = {};
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         const dateStr = data.dateStr;
         if (!fetchedEvents[dateStr]) fetchedEvents[dateStr] = [];
-        fetchedEvents[dateStr].push({ id: doc.id, ...data });
+        fetchedEvents[dateStr].push({ id: docSnap.id, ...data });
       });
       setEvents(fetchedEvents);
     });
     return () => unsubscribe();
-  }, []);
+  }, [eventsCollectionRef]);
 
   const formatDateStr = (date) => {
     const offset = date.getTimezoneOffset();
@@ -60,10 +57,12 @@ function App() {
     return localDate.toISOString().split('T')[0];
   };
 
+  // ✅ Fix 2: タイトルが空かどうかを変数化してボタンのdisabled制御に使う
+  const canAddEvent = newEventTitle.trim() !== '' && !!currentUser;
+
   const handleAddEvent = async () => {
-    if (newEventTitle.trim() === '' || !currentUser) return;
+    if (!canAddEvent) return;
     const dateKey = formatDateStr(selectedDate);
-    
     const newEventData = {
       type: newEventType,
       title: newEventTitle,
@@ -72,13 +71,17 @@ function App() {
       responses: { [currentUser]: 'attend' },
       createdAt: new Date()
     };
-
     try {
       await addDoc(eventsCollectionRef, newEventData);
       setNewEventTitle('');
     } catch (error) {
       console.error("保存失敗:", error);
     }
+  };
+
+  // ✅ Fix 1: Enterキーで追加
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleAddEvent();
   };
 
   const handleResponse = async (eventId, status) => {
@@ -102,17 +105,22 @@ function App() {
     }
   };
 
-  // カレンダーの表示（変更なし）
+  // ✅ Fix 3: バッジは最大2件表示、超えたら「+N件」と表示
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
       const dateStr = formatDateStr(date);
       const dayEvents = events[dateStr];
       if (dayEvents && dayEvents.length > 0) {
+        const visible = dayEvents.slice(0, 2);
+        const overflow = dayEvents.length - 2;
         return (
           <div className="event-badges-container">
-            {dayEvents.map((ev) => (
+            {visible.map((ev) => (
               <div key={ev.id} className={`event-badge ${ev.type}`}>{ev.title}</div>
             ))}
+            {overflow > 0 && (
+              <div className="event-badge-overflow">+{overflow}件</div>
+            )}
           </div>
         );
       }
@@ -124,27 +132,29 @@ function App() {
   const selectedDayEvents = selectedDate ? events[selectedDateStr] || [] : [];
 
   return (
+    // ✅ Fix 6: rainbow-bar をヘッダーの内側先頭に移動
     <div className="calendar-app">
-      {/* ログインしているLINEユーザーを表示 */}
       <div className="user-selector">
         <span>👤 LINEログイン中: <strong>{currentUser || '読み込み中...'}</strong></span>
       </div>
 
-      <div className="imas-rainbow-bar" />
       <header className="header">
-        <h1>グループ予定表</h1>
-        <div className="brand-dots">
-          <span className="d-765" />
-          <span className="d-cg" />
-          <span className="d-ml" />
-          <span className="d-sidem" />
-          <span className="d-shiny" />
-          <span className="d-gaku" />
+        <div className="imas-rainbow-bar" />
+        <div className="header-inner">
+          <h1>グループ予定表</h1>
+          <div className="brand-dots">
+            <span className="d-765" />
+            <span className="d-cg" />
+            <span className="d-ml" />
+            <span className="d-sidem" />
+            <span className="d-shiny" />
+            <span className="d-gaku" />
+          </div>
         </div>
       </header>
-      
+
       <div className="calendar-container">
-        <Calendar 
+        <Calendar
           onClickDay={(value) => setSelectedDate(value)}
           tileContent={tileContent}
           calendarType="gregory"
@@ -154,9 +164,12 @@ function App() {
 
       {selectedDate && (
         <div className="modal-overlay" onClick={() => setSelectedDate(null)}>
+          {/* ✅ Fix 4: モーダルを max-height + overflow-y: auto でスクロール可能に */}
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <h2>{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日の予定</h2>
-            
+            <div className="modal-header">
+              <h2>{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日の予定</h2>
+            </div>
+
             <div className="modal-body">
               <div className="day-events-list">
                 {selectedDayEvents.length > 0 ? (
@@ -182,11 +195,11 @@ function App() {
                         <p className="creator-text">作成者: {ev.createdBy}</p>
 
                         <div className="response-buttons">
-                          <button 
+                          <button
                             className={`btn-attend ${myResponse === 'attend' ? 'active' : ''}`}
                             onClick={() => handleResponse(ev.id, 'attend')}
                           >⭕️ 参加</button>
-                          <button 
+                          <button
                             className={`btn-absent ${myResponse === 'absent' ? 'active' : ''}`}
                             onClick={() => handleResponse(ev.id, 'absent')}
                           >❌ 不参加</button>
@@ -212,11 +225,12 @@ function App() {
 
               <div className="add-event-form">
                 <h3>予定を追加</h3>
-                <input 
-                  type="text" 
-                  placeholder="予定のタイトル" 
+                <input
+                  type="text"
+                  placeholder="予定のタイトル"
                   value={newEventTitle}
                   onChange={(e) => setNewEventTitle(e.target.value)}
+                  onKeyDown={handleKeyDown}
                   className="event-input"
                 />
                 <div className="form-row">
@@ -225,11 +239,19 @@ function App() {
                     <option value="drink">🍻 飲み会</option>
                     <option value="game">🎮 ゲーム</option>
                   </select>
-                  <button onClick={handleAddEvent} className="add-btn">追加</button>
+                  {/* ✅ Fix 2: disabled 制御 + スタイルクラス */}
+                  <button
+                    onClick={handleAddEvent}
+                    className={`add-btn ${canAddEvent ? '' : 'disabled'}`}
+                    disabled={!canAddEvent}
+                  >追加</button>
                 </div>
               </div>
             </div>
-            <button className="close-btn" onClick={() => setSelectedDate(null)}>閉じる</button>
+
+            <div className="modal-footer">
+              <button className="close-btn" onClick={() => setSelectedDate(null)}>閉じる</button>
+            </div>
           </div>
         </div>
       )}
