@@ -28,6 +28,10 @@ function App() {
           liff.getProfile().then(profile => {
             setCurrentUser(profile.displayName);
           });
+          // グループID確認用（取得後は削除）
+          const ctx = liff.getContext();
+          console.log('LINE context:', JSON.stringify(ctx));
+          alert('groupId: ' + (ctx?.groupId ?? 'なし'));
         }
       })
       .catch((err) => {
