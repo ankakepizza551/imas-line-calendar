@@ -3,7 +3,7 @@ import Calendar from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 import './App.css';
 import { db } from './firebase'; 
-import { collection, addDoc, onSnapshot, query, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 // LINEのライブラリをインポート
 import liff from '@line/liff';
 
@@ -93,6 +93,15 @@ function App() {
     }
   };
 
+  const handleDeleteEvent = async (eventId, eventTitle) => {
+    if (!window.confirm(`「${eventTitle}」を削除しますか？`)) return;
+    try {
+      await deleteDoc(doc(db, 'events', eventId));
+    } catch (error) {
+      console.error("削除失敗:", error);
+    }
+  };
+
   // カレンダーの表示（変更なし）
   const tileContent = ({ date, view }) => {
     if (view === 'month') {
@@ -155,6 +164,11 @@ function App() {
                             {ev.type === 'drink' ? '🍻' : ev.type === 'game' ? '🎮' : '📅'}
                           </span>
                           <span className="event-title">{ev.title}</span>
+                          <button
+                            className="delete-btn"
+                            onClick={() => handleDeleteEvent(ev.id, ev.title)}
+                            title="予定を削除"
+                          >🗑️</button>
                         </div>
                         <p className="creator-text">作成者: {ev.createdBy}</p>
 
