@@ -130,8 +130,17 @@ function App() {
         <span>👤 LINEログイン中: <strong>{currentUser || '読み込み中...'}</strong></span>
       </div>
 
+      <div className="imas-rainbow-bar" />
       <header className="header">
         <h1>グループ予定表</h1>
+        <div className="brand-dots">
+          <span className="d-765" />
+          <span className="d-cg" />
+          <span className="d-ml" />
+          <span className="d-sidem" />
+          <span className="d-shiny" />
+          <span className="d-gaku" />
+        </div>
       </header>
       
       <div className="calendar-container">
@@ -158,7 +167,7 @@ function App() {
                     const myResponse = responses[currentUser];
 
                     return (
-                      <div key={ev.id} className="event-detail-card">
+                      <div key={ev.id} className={`event-detail-card type-${ev.type}`}>
                         <div className="event-card-header">
                           <span className={`event-badge ${ev.type}`}>
                             {ev.type === 'drink' ? '🍻' : ev.type === 'game' ? '🎮' : '📅'}
