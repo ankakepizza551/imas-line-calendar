@@ -1,5 +1,6 @@
 import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 // TODO: さきほどコピーした firebaseConfig の中身をここに貼り付けます！
 const firebaseConfig = {
@@ -17,3 +18,4 @@ const app = initializeApp(firebaseConfig);
 
 // データベース（Firestore）を使うための準備をしてエクスポート
 export const db = getFirestore(app);
+export const auth = getAuth(app);

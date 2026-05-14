@@ -202,9 +202,13 @@ body {
   font-weight: 700;
   width: 100%;
 }
-.event-badge.drink { background-color: var(--imas-765); }
-.event-badge.game  { background-color: var(--imas-cg); }
-.event-badge.event { background-color: var(--imas-sidem); }
+.badge-date { opacity: 0.8; font-size: 8px; }
+
+.event-badge.drink  { background-color: var(--imas-765); }
+.event-badge.game   { background-color: var(--imas-cg); }
+.event-badge.event  { background-color: var(--imas-sidem); }
+.event-badge.live   { background-color: var(--imas-gaku); }
+.event-badge.ticket { background-color: var(--imas-ml); color: #5a3e10; }
 
 /* =============================================
    モーダル
@@ -227,8 +231,7 @@ body {
   min-height: 45vh;
   box-shadow: 0 -6px 24px rgba(50, 10, 80, 0.18);
   animation: slideUp 0.3s ease-out;
-  /* Fix 4: flex構造でスクロール制御するため overflow は子に委譲 */
-  overflow: visible;
+  overflow: hidden;
 }
 .modal-content::before {
   content: '';
@@ -294,9 +297,11 @@ body {
   width: 4px;
   border-radius: 14px 0 0 14px;
 }
-.event-detail-card.type-drink::before { background: var(--imas-765); }
-.event-detail-card.type-game::before  { background: var(--imas-cg); }
-.event-detail-card.type-event::before { background: var(--imas-sidem); }
+.event-detail-card.type-drink::before  { background: var(--imas-765); }
+.event-detail-card.type-game::before   { background: var(--imas-cg); }
+.event-detail-card.type-event::before  { background: var(--imas-sidem); }
+.event-detail-card.type-live::before   { background: var(--imas-gaku); }
+.event-detail-card.type-ticket::before { background: var(--imas-ml); }
 
 .event-card-header {
   display: flex;
@@ -305,7 +310,11 @@ body {
   margin-bottom: 4px;
   font-size: 17px;
 }
-.event-title { font-weight: 800; color: var(--text); flex: 1; }
+.event-card-header .event-badge {
+  width: auto;
+  flex-shrink: 0;
+}
+.event-title { font-weight: 800; color: var(--text); flex: 1; min-width: 0; word-break: break-word; }
 
 .delete-btn {
   margin-left: auto;
@@ -397,6 +406,7 @@ body {
 }
 .event-input:focus { border-color: var(--imas-shiny); }
 .form-row { display: flex; gap: 10px; }
+.form-row > .add-btn:only-child { flex: 1; }
 .event-select {
   flex: 1;
   padding: 11px 10px;
@@ -485,6 +495,322 @@ body {
   color: var(--text-muted);
   box-shadow: none;
   cursor: not-allowed;
+}
+
+/* =============================================
+   通知説明
+============================================= */
+.notify-info {
+  margin: 12px 8px 4px;
+  padding: 10px 14px;
+  background: linear-gradient(135deg, #f5eeff 0%, #ede0ff 100%);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 12px;
+  color: #6a3ea0;
+  text-align: center;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+/* =============================================
+   編集モード / 編集ボタン
+============================================= */
+.edit-btn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  line-height: 1;
+  opacity: 0.45;
+  transition: opacity 0.2s, background-color 0.2s;
+}
+.edit-btn:hover { opacity: 1; background-color: #f0e8ff; }
+
+.edit-mode .event-input { margin-bottom: 8px; }
+.edit-mode .form-row { gap: 6px; }
+.edit-mode .add-btn { padding: 8px 14px; font-size: 13px; }
+.cancel-btn {
+  padding: 8px 12px;
+  background: white;
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* =============================================
+   削除確認ダイアログ
+============================================= */
+.confirm-overlay {
+  align-items: center;
+  background-color: rgba(30, 10, 50, 0.4);
+}
+.confirm-dialog {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 20px;
+  max-width: 320px;
+  width: calc(100% - 32px);
+  box-shadow: 0 8px 32px rgba(50, 10, 80, 0.25);
+}
+.confirm-message {
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 16px;
+  line-height: 1.5;
+  text-align: center;
+}
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+}
+.confirm-buttons .cancel-btn { flex: 1; padding: 11px; }
+.delete-confirm-btn {
+  flex: 1;
+  padding: 11px;
+  background: linear-gradient(135deg, var(--imas-765) 0%, #d63a59 100%);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(243, 79, 109, 0.4);
+}
+
+/* =============================================
+   トースト通知
+============================================= */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  z-index: 2000;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  animation: toastIn 0.25s ease-out;
+  max-width: calc(100% - 32px);
+}
+.toast-success { background: linear-gradient(135deg, var(--imas-sidem) 0%, #0a9d7a 100%); }
+.toast-error   { background: linear-gradient(135deg, var(--imas-765) 0%, #d63a59 100%); }
+.toast-info    { background: linear-gradient(135deg, #6a9fff 0%, #4d7fdc 100%); }
+@keyframes toastIn {
+  from { opacity: 0; transform: translate(-50%, 12px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* =============================================
+   ヘルプボタン
+============================================= */
+.help-btn {
+  margin-left: auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(141,187,255,0.7);
+  background: rgba(141,187,255,0.18);
+  color: var(--imas-shiny);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.help-btn:hover { background: rgba(141,187,255,0.35); border-color: var(--imas-shiny); }
+
+/* =============================================
+   ヘルプダイアログ
+============================================= */
+.help-dialog {
+  background: var(--surface);
+  border-radius: 18px;
+  padding: 0;
+  max-width: 340px;
+  width: calc(100% - 32px);
+  box-shadow: 0 8px 32px rgba(50, 10, 80, 0.25);
+  overflow: hidden;
+}
+.help-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(135deg, #2a1a3e 0%, #3d2060 100%);
+}
+.help-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: white;
+  letter-spacing: 0.04em;
+}
+.help-close {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 6px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+.help-close:hover { color: white; }
+
+.help-list {
+  list-style: none;
+  padding: 10px 0 6px;
+}
+.help-list li {
+  display: flex;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.help-list li:last-child { border-bottom: none; }
+.help-icon {
+  font-size: 17px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+  padding-top: 1px;
+}
+.help-list strong { display: block; font-size: 13px; margin-bottom: 2px; }
+.help-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* =============================================
+   ブランド・開催日・チケット種類・締切
+============================================= */
+.brand-select {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.date-range-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.date-input {
+  flex: 1;
+  margin-bottom: 0;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+.date-sep {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.deadline-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.field-label {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--imas-765);
+  white-space: nowrap;
+}
+.deadline-input {
+  flex: 1;
+  margin-bottom: 0;
+  padding: 10px 8px;
+  font-size: 14px;
+}
+
+.creator-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.brand-tag {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #2a1a3e 0%, #3d2060 100%);
+  color: var(--imas-shiny);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.event-dates-text,
+.event-ticket-kind,
+.event-deadline {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  padding-left: 2px;
+  font-weight: 600;
+}
+.event-deadline { color: var(--imas-765); }
+
+/* =============================================
+   URLフィールド・メモ欄
+============================================= */
+.event-memo {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.6;
+}
+
+.event-url-text {
+  font-size: 12px;
+  margin-bottom: 6px;
+  padding-left: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.event-url-text a {
+  color: var(--imas-cg);
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.event-memo-text {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  line-height: 1.6;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 /* =============================================
