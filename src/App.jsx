@@ -40,6 +40,9 @@ function App() {
   const [editingDeadline, setEditingDeadline] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
+  const [showMembers, setShowMembers] = useState(false);
+  const [membersMap, setMembersMap] = useState({}); // { userId: displayName }
+  const [authReady, setAuthReady] = useState(false);
 
   const eventsCollectionRef = useRef(collection(db, 'events')).current;
 
@@ -66,8 +69,10 @@ function App() {
         // Firebase匿名認証
         try {
           await signInAnonymously(auth);
+          setAuthReady(true);
         } catch (e) {
           console.error('匿名認証失敗', e);
+          showToast('Firebase認証に失敗しました。再読み込みをお試しください', 'error');
         }
 
         // メンバー情報をFirestoreに登録（通知の宛先になる）
@@ -105,6 +110,19 @@ function App() {
       }
     })();
   }, [eventsCollectionRef]);
+
+  // membersコレクションをリアルタイム取得（userId → displayName の変換に使う）
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'members'), (snapshot) => {
+      const m = {};
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.userId) m[data.userId] = data.displayName;
+      });
+      setMembersMap(m);
+    });
+    return () => unsubscribe();
+  }, []);
 
   // 予定をリアルタイム取得 + createdAt順ソート
   useEffect(() => {
@@ -174,7 +192,7 @@ function App() {
         dateStr: dateKey,
         createdBy: currentUser,
         createdById: userId,
-        responses: { [currentUser]: 'attend' },
+        responses: { [userId]: 'attend' },
         createdAt: new Date(),
       });
       const titleSnapshot = newEventTitle;
@@ -206,10 +224,16 @@ function App() {
   };
 
   const handleResponse = async (ev, status) => {
-    if (!currentUser) return;
+    if (!currentUser || !userId) return;
+    if (!authReady) {
+      showToast('認証中です。少し待ってから再度お試しください', 'error');
+      return;
+    }
     try {
+      // キーに userId を使う（表示名はドット等の特殊文字を含む場合があり
+      // Firestoreのフィールドパスとして解釈されてしまうため）
       await updateDoc(doc(db, 'events', ev.id), {
-        [`responses.${currentUser}`]: status
+        [`responses.${userId}`]: status
       });
       callWorker('/notify-response', {
         title: ev.title,
@@ -285,6 +309,16 @@ function App() {
     } catch (error) {
       console.error('編集失敗:', error);
       showToast('更新に失敗しました', 'error');
+    }
+  };
+
+  const handleRemoveMember = async (targetUserId) => {
+    try {
+      await deleteDoc(doc(db, 'members', targetUserId));
+      showToast('メンバーを削除しました', 'success');
+    } catch (e) {
+      console.error('メンバー削除失敗', e);
+      showToast('削除に失敗しました', 'error');
     }
   };
 
@@ -383,9 +417,16 @@ function App() {
                 {selectedDayEvents.length > 0 ? (
                   selectedDayEvents.map(ev => {
                     const responses = ev.responses || {};
-                    const attendees = Object.keys(responses).filter(m => responses[m] === 'attend');
-                    const absentees = Object.keys(responses).filter(m => responses[m] === 'absent');
-                    const myResponse = responses[currentUser];
+                    // キーがuserIdなら表示名に変換、旧データ（displayName直接格納）はそのまま表示
+                    const resolveKey = (key) => membersMap[key] || key;
+                    const attendees = Object.keys(responses)
+                      .filter(k => responses[k] === 'attend')
+                      .map(resolveKey);
+                    const absentees = Object.keys(responses)
+                      .filter(k => responses[k] === 'absent')
+                      .map(resolveKey);
+                    // 新形式（userId）・旧形式（displayName）の両方を確認
+                    const myResponse = responses[userId] ?? responses[currentUser];
                     const isEditing = editingId === ev.id;
 
                     return (
@@ -601,32 +642,74 @@ function App() {
       )}
 
       {showHelp && (
-        <div className="modal-overlay confirm-overlay" onClick={() => setShowHelp(false)}>
+        <div className="modal-overlay confirm-overlay" onClick={() => { setShowHelp(false); setShowMembers(false); }}>
           <div className="help-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="help-header">
-              <span className="help-title">機能一覧</span>
-              <button className="help-close" onClick={() => setShowHelp(false)}>✕</button>
+              <span className="help-title">{showMembers ? 'メンバー管理' : '機能一覧'}</span>
+              <div className="help-header-actions">
+                <button
+                  className="help-tab-btn"
+                  onClick={() => setShowMembers((v) => !v)}
+                  title={showMembers ? '機能一覧へ' : 'メンバー管理'}
+                >
+                  {showMembers ? '📋 機能一覧' : '👥 メンバー'}
+                </button>
+                <button className="help-close" onClick={() => { setShowHelp(false); setShowMembers(false); }}>✕</button>
+              </div>
             </div>
-            <ul className="help-list">
-              <li><span className="help-icon">📅</span><div><strong>予定の確認・追加</strong><br />日付をタップしてその日の予定を確認・追加できます</div></li>
-              <li><span className="help-icon">🔗</span><div><strong>URL・メモ</strong><br />予定にURLやメモ（改行可）を添付できます</div></li>
-              <li><span className="help-icon">⭕️❌</span><div><strong>出欠返答</strong><br />各予定に参加 / 不参加を回答できます</div></li>
-              <li><span className="help-icon">🔔</span><div><strong>LINE通知</strong><br />前日20時・当日8時に通知が届きます<br />予定追加・出欠変更時もリアルタイム通知</div></li>
-              <li><span className="help-icon">✏️🗑️</span><div><strong>編集・削除</strong><br />予定はいつでも編集・削除できます</div></li>
-              <li>
-                <span className="help-icon">🏷️</span>
-                <div>
-                  <strong>カテゴリ</strong><br />
-                  <span className="help-types">
-                    <span>📅 イベント</span>
-                    <span>🍻 飲み会</span>
-                    <span>🎮 ゲーム</span>
-                    <span>🎤 ライブ</span>
-                    <span>🎫 チケット応募</span>
-                  </span>
-                </div>
-              </li>
-            </ul>
+
+            {showMembers ? (
+              <div className="members-manage-list">
+                <p className="members-manage-note">
+                  グループを退出したメンバーは通知が届き続けます。<br />
+                  退出済みのメンバーを削除してください。
+                </p>
+                <ul className="help-list">
+                  {Object.entries(membersMap).map(([uid, name]) => (
+                    <li key={uid} className="member-manage-row">
+                      <span className="help-icon">👤</span>
+                      <div className="member-manage-info">
+                        <strong>{name}</strong>
+                        {uid === userId && <span className="member-self-tag">（自分）</span>}
+                      </div>
+                      <button
+                        className="member-remove-btn"
+                        onClick={() => handleRemoveMember(uid)}
+                        title="このメンバーを通知リストから削除"
+                      >削除</button>
+                    </li>
+                  ))}
+                  {Object.keys(membersMap).length === 0 && (
+                    <li className="member-manage-row"><span style={{ color: '#999' }}>メンバーなし</span></li>
+                  )}
+                </ul>
+              </div>
+            ) : (
+              <ul className="help-list">
+                <li><span className="help-icon">📅</span><div><strong>予定の確認・追加</strong><br />日付をタップしてその日の予定を確認・追加できます</div></li>
+                <li><span className="help-icon">🔗</span><div><strong>URL・メモ</strong><br />予定にURLやメモ（改行可）を添付できます</div></li>
+                <li><span className="help-icon">⭕️❌</span><div><strong>出欠返答</strong><br />各予定に参加 / 不参加を回答できます</div></li>
+                <li><span className="help-icon">🔔</span><div><strong>LINE通知</strong><br />前日20時・当日8時に通知が届きます<br />予定追加・出欠変更時もリアルタイム通知</div></li>
+                <li><span className="help-icon">✏️🗑️</span><div><strong>編集・削除</strong><br />予定はいつでも編集・削除できます</div></li>
+                <li>
+                  <span className="help-icon">🏷️</span>
+                  <div>
+                    <strong>カテゴリ</strong><br />
+                    <span className="help-types">
+                      <span>📅 イベント</span>
+                      <span>🍻 飲み会</span>
+                      <span>🎮 ゲーム</span>
+                      <span>🎤 ライブ</span>
+                      <span>🎫 チケット応募</span>
+                    </span>
+                  </div>
+                </li>
+                <li>
+                  <span className="help-icon">👥</span>
+                  <div><strong>メンバー管理</strong><br />「👥 メンバー」ボタンから退出者を通知リストから削除できます</div>
+                </li>
+              </ul>
+            )}
           </div>
         </div>
       )}

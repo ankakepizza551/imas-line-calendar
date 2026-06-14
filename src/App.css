@@ -658,6 +658,25 @@ body {
   color: white;
   letter-spacing: 0.04em;
 }
+.help-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.help-tab-btn {
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.25);
+  color: rgba(255,255,255,0.85);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 4px 10px;
+  border-radius: 16px;
+  line-height: 1.4;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+.help-tab-btn:hover { background: rgba(255,255,255,0.25); color: white; }
 .help-close {
   background: none;
   border: none;
@@ -670,6 +689,55 @@ body {
   transition: color 0.15s;
 }
 .help-close:hover { color: white; }
+
+/* メンバー管理 */
+.members-manage-list {
+  padding: 0 0 6px;
+}
+.members-manage-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 16px 4px;
+  line-height: 1.55;
+  border-bottom: 1px solid var(--border);
+}
+.member-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.member-manage-row:last-child { border-bottom: none; }
+.member-manage-info {
+  flex: 1;
+  font-weight: 700;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.member-self-tag {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--text-muted);
+  margin-left: 4px;
+}
+.member-remove-btn {
+  flex-shrink: 0;
+  background: #fff0f3;
+  border: 1px solid #f8c0c8;
+  color: var(--imas-765);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.member-remove-btn:hover { background: #ffd6dc; }
 
 .help-list {
   list-style: none;
