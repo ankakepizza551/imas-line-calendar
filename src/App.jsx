@@ -76,14 +76,19 @@ function App() {
         }
 
         // メンバー情報をFirestoreに登録（通知の宛先になる）
-        try {
-          await setDoc(doc(db, 'members', profile.userId), {
-            userId: profile.userId,
-            displayName: profile.displayName,
-            updatedAt: new Date(),
-          }, { merge: true });
-        } catch (e) {
-          console.error('メンバー登録失敗', e);
+        // グループトーク内から開いた場合のみ登録する。1:1チャットや外部ブラウザ経由の
+        // 古いリンクから開いた場合まで登録すると、グループを退出した人が復活してしまう。
+        const context = liff.getContext();
+        if (context?.type === 'group') {
+          try {
+            await setDoc(doc(db, 'members', profile.userId), {
+              userId: profile.userId,
+              displayName: profile.displayName,
+              updatedAt: new Date(),
+            }, { merge: true });
+          } catch (e) {
+            console.error('メンバー登録失敗', e);
+          }
         }
 
         // 30日以上前の予定を自動削除
@@ -246,7 +251,8 @@ function App() {
       });
     } catch (error) {
       console.error("更新失敗:", error);
-      showToast('更新に失敗しました', 'error');
+      const code = error?.code ?? error?.message ?? '不明なエラー';
+      showToast(`更新に失敗しました (${code})`, 'error');
     }
   };
 
